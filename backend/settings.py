@@ -30,8 +30,6 @@ INSTALLED_APPS = [
 
     # Local apps
     'users',
-    'links',
-    'clicks',
 ]
 
 # MIDDLEWARE

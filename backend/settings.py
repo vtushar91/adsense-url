@@ -30,6 +30,8 @@ INSTALLED_APPS = [
 
     # Local apps
     'users',
+    "links",
+    "clicks",
 ]
 
 # MIDDLEWARE
@@ -127,3 +129,4 @@ SIMPLE_JWT = {
 # CORS (frontend access)
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+ADS_FRONTEND_URL = os.getenv("ADS_FRONTEND_URL")

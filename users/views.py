@@ -35,12 +35,12 @@ class LoginView(APIView):
 
         return Response({
             "access_token": str(refresh.access_token),
+            "refresh_token": str(refresh),  
             "user": {
                 "username": user.username,
                 "name": user.name
             }
         }, status=status.HTTP_200_OK)
-
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
 

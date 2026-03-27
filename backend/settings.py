@@ -6,6 +6,7 @@ import dj_database_url
 # Load .env
 load_dotenv()
 
+
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -125,8 +126,6 @@ REST_FRAMEWORK = {
     ),
 }
 
-from rest_framework_simplejwt.settings import api_settings
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -136,4 +135,5 @@ SIMPLE_JWT = {
 # CORS (frontend access)
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-ADS_FRONTEND_URL = os.getenv("ADS_FRONTEND_URL")
+LOCAL_ADS_FRONTEND_URL = os.getenv("LOCAL_ADS_FRONTEND_URL")
+PROD_ADS_FRONTEND_URL = os.getenv("PROD_ADS_FRONTEND_URL")

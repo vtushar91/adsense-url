@@ -74,7 +74,14 @@ class RedirectView(APIView):
             link.unique_clicks += 1
             link.save(update_fields=["unique_clicks"])
 
-        ads_redirect_url = f"{settings.ADS_FRONTEND_URL}//test_ads.html?code={short_code}"
+        host = request.get_host()
+
+        if "localhost" in host or "127.0.0.1" in host:
+            base_url = settings.LOCAL_ADS_FRONTEND_URL
+        else:
+            base_url = settings.PROD_ADS_FRONTEND_URL
+
+        ads_redirect_url = f"{base_url}?code={short_code}"
 
         return redirect(ads_redirect_url)
     

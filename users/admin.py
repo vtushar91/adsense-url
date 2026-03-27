@@ -1,16 +1,26 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User
+from .models import User, UserProfile
 
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    # What you see in user list
-    list_display = ('username', 'name', 'phone_or_upi', 'is_active')
-    search_fields = ('username', 'phone_or_upi')
+
+    # List view (table)
+    list_display = (
+        'username',
+        'name',
+        'phone_or_upi',
+        'earnings',
+        'referral_code',
+        'is_active'
+    )
+
+    search_fields = ('username', 'phone_or_upi', 'referral_code')
+
     ordering = ('-date_joined',)
 
-    # Fields shown when ADDING a user
+    # Add user form
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
@@ -18,14 +28,34 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
 
-    # Fields shown when EDITING a user
+    # Edit user form
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        ('Basic Info', {'fields': ('name', 'phone_or_upi')}),
-        ('Status', {'fields': ('is_active',)}),
+
+        ('Basic Info', {
+            'fields': ('name', 'phone_or_upi')
+        }),
+
+        ('Earnings', {
+            'fields': ('earnings', 'pending_withdraw', 'total_withdrawn')
+        }),
+
+        ('Referral', {
+            'fields': ('referral_code', 'referred_by')
+        }),
+
+        ('Status', {
+            'fields': ('is_active',)
+        }),
     )
 
-    # Hide advanced Django stuff
+    # Make sensitive fields read-only
+    readonly_fields = ('referral_code',)
+
+    # Keep it clean
     filter_horizontal = ()
     list_filter = ()
     
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "phone_number", "city", "country")

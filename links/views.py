@@ -22,9 +22,7 @@ class CreateShortLinkView(APIView):
             owner=request.user,
             original_url=serializer.validated_data["original_url"]
         )
-
-        short_url = f"{request.scheme}://{request.get_host()}/{link.short_code}"
-
+        short_url = f"{settings.BASE_DOMAIN}/{link.short_code}"
         return Response({
             "short_url": short_url,
             "short_code":link.short_code
@@ -81,7 +79,7 @@ class RedirectView(APIView):
         else:
             base_url = settings.PROD_ADS_FRONTEND_URL
 
-        ads_redirect_url = f"{base_url}?code={short_code}"
+        ads_redirect_url = f"{base_url}/code={short_code}"
 
         return redirect(ads_redirect_url)
     

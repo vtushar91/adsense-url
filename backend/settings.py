@@ -2,6 +2,7 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+from decimal import Decimal
 import dj_database_url
 # Load .env
 load_dotenv()
@@ -24,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "links.apps.LinksConfig",
 
     # Third-party
     'rest_framework',
@@ -31,7 +33,6 @@ INSTALLED_APPS = [
 
     # Local apps
     'users',
-    "links",
     "clicks",
 ]
 
@@ -127,7 +128,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=2),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
@@ -138,3 +139,4 @@ CORS_ALLOW_CREDENTIALS = True
 LOCAL_ADS_FRONTEND_URL = os.getenv("LOCAL_ADS_FRONTEND_URL")
 PROD_ADS_FRONTEND_URL = os.getenv("PROD_ADS_FRONTEND_URL")
 BASE_DOMAIN = os.getenv("BASE_DOMAIN", "http://localhost:3000")
+REFERRAL_PERCENT = Decimal(os.getenv("REFERRAL_PERCENT", "0.10"))

@@ -5,10 +5,11 @@ from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from links.models import ShortLink
 from decimal import Decimal
-
+from clicks.models import ClickEvent
 from .serializers import RegisterSerializer, LoginSerializer,UserProfileSerializer
-
-
+from django.db.models import Sum, Avg
+from django.utils import timezone
+from datetime import timedelta
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -61,39 +62,104 @@ class DashboardView(APIView):
 
     def get(self, request):
         user = request.user
+        today = timezone.now().date()
 
         links = ShortLink.objects.filter(owner=user)
 
+        # 🔢 Basic stats
         links_created = links.count()
-        total_clicks = sum(link.unique_clicks for link in links)
 
-        earnings = user.earnings
-        pending = user.pending_withdraw
-        available = earnings - pending
+        total_clicks = links.aggregate(
+            total=Sum("unique_clicks")
+        )["total"] or 0
 
+        # 📅 Today clicks
+        today_clicks = ClickEvent.objects.filter(
+            short_link__owner=user,
+            created_at__date=today
+        ).count()
+
+        # 💰 Earnings (total)
+        earnings_data = ClickEvent.objects.filter(
+            short_link__owner=user,
+            is_completed=True
+        ).aggregate(
+            total=Sum("earned_amount")
+        )
+
+        total_earnings = earnings_data["total"] or 0
+
+        # 💰 Today earnings
+        today_earnings_data = ClickEvent.objects.filter(
+            short_link__owner=user,
+            is_completed=True,
+            created_at__date=today
+        ).aggregate(
+            total=Sum("earned_amount")
+        )
+
+        today_earnings = today_earnings_data["total"] or 0
+
+        # 📊 Average CPM
+        avg_cpm = ClickEvent.objects.filter(
+            short_link__owner=user,
+            is_completed=True
+        ).aggregate(
+            avg=Avg("cpm_snapshot")
+        )["avg"] or 0
+
+        # 👥 Referrals
         referrals = user.referrals.all()
+        referral_count = referrals.count()
+
+        # 💰 (optional: if you track referral earnings)
+        referral_earnings = getattr(user, "referral_earnings", 0)
+
+        # 💸 Balance
+        pending = user.pending_withdraw or 0
+        available = total_earnings - pending
+
+        # 📈 Performance graph (last 7 days)
+        last_7_days = []
+        for i in range(6, -1, -1):
+            day = today - timedelta(days=i)
+
+            day_earnings = ClickEvent.objects.filter(
+                short_link__owner=user,
+                is_completed=True,
+                created_at__date=day
+            ).aggregate(total=Sum("earned_amount"))["total"] or 0
+
+            last_7_days.append({
+                "date": str(day),
+                "earnings": float(day_earnings)
+            })
 
         return Response({
             "username": user.username,
 
-            "links_created": links_created,
-            "total_clicks": total_clicks,
-            "earnings": earnings,
+            # 🔥 top cards
+            "today_views": today_clicks,
+            "today_earnings": today_earnings,
+            "referral_earnings": referral_earnings,
+            "average_cpm": avg_cpm,
 
+            # 📊 stats
+            "links_created": links_created,
+            "total_views": total_clicks,
+            "total_earnings": total_earnings,
+
+            # 💰 wallet
             "available_balance": available,
             "pending_withdraw": pending,
-            "total_withdrawn": user.total_withdrawn,
+            "total_withdrawn": user.total_withdrawn or 0,
 
+            # 👥 referrals
             "referral_code": user.referral_code,
-            "total_referrals": referrals.count(),
+            "total_referrals": referral_count,
 
-            "referrals": [
-                {
-                    "username": ref.username,
-                    "date_joined": ref.date_joined
-                }
-                for ref in referrals
-            ]
+            # 📈 graph
+            "performance": last_7_days
         })
 class WithdrawView(APIView):
     permission_classes = [IsAuthenticated]

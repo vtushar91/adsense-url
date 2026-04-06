@@ -3,9 +3,11 @@ from .models import ShortLink
 
 
 class CreateShortLinkSerializer(serializers.ModelSerializer):
+    monetization_rule_id = serializers.UUIDField(required=False)
+
     class Meta:
         model = ShortLink
-        fields = ["original_url"]
+        fields = ["original_url", "monetization_rule_id"]
 
 
 class ShortLinkSerializer(serializers.ModelSerializer):

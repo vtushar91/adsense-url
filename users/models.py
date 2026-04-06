@@ -3,14 +3,15 @@ from django.db import models
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from decimal import Decimal
 class User(AbstractUser):
     name = models.CharField(max_length=100)
     phone_or_upi = models.CharField(max_length=50, unique=True)
-    earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    earnings = models.DecimalField(max_digits=10, decimal_places=6, default=Decimal("0.0"))
 
-    pending_withdraw = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    pending_withdraw = models.DecimalField(max_digits=10, decimal_places=6, default=Decimal("0.0"))
 
-    total_withdrawn = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    total_withdrawn = models.DecimalField(max_digits=10, decimal_places=6, default=Decimal("0.0"))
 
     referral_code = models.CharField(
     max_length=20,
@@ -24,6 +25,11 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name="referrals"
+    )
+    referral_earnings = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        default=Decimal("0.0")
     )
     def __str__(self):
         return self.username

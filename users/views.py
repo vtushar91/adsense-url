@@ -124,15 +124,23 @@ class DashboardView(APIView):
         for i in range(6, -1, -1):
             day = today - timedelta(days=i)
 
-            day_earnings = ClickEvent.objects.filter(
+            day_queryset = ClickEvent.objects.filter(
                 short_link__owner=user,
-                is_completed=True,
                 created_at__date=day
+            )
+
+            # 💰 earnings
+            day_earnings = day_queryset.filter(
+                is_completed=True
             ).aggregate(total=Sum("earned_amount"))["total"] or 0
+
+            # 👆 clicks (ALL clicks, not just completed)
+            day_clicks = day_queryset.count()
 
             last_7_days.append({
                 "date": str(day),
-                "earnings": float(day_earnings)
+                "earnings": float(day_earnings),
+                "clicks": day_clicks
             })
 
         return Response({

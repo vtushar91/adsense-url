@@ -50,7 +50,7 @@ class CreateShortLinkView(APIView):
             original_url=serializer.validated_data["original_url"],
             monetization=rule
         )
-        short_url = f"{settings.BASE_DOMAIN}/{link.short_code}"
+        short_url = f"{settings.BASE_DOMAIN}/{link.short_code}/"
         return Response({
             "short_url": short_url,
             "short_code": link.short_code

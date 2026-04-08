@@ -49,7 +49,7 @@ class ShortLink(models.Model):
     def __str__(self):
         return self.short_code
     
-    def generate_short_code(length=6):
+    def generate_short_code(self, length=6):
         characters = string.ascii_letters + string.digits
         return ''.join(random.choice(characters) for _ in range(length))
     

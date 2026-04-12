@@ -7,7 +7,7 @@ from links.models import ShortLink
 from decimal import Decimal
 from clicks.models import ClickEvent
 from .serializers import RegisterSerializer, LoginSerializer,UserProfileSerializer
-from django.db.models import Sum, Avg
+from django.db.models import Sum, Avg, Count, Q
 from django.utils import timezone
 from datetime import timedelta
 class RegisterView(APIView):
@@ -64,110 +64,100 @@ class DashboardView(APIView):
         user = request.user
         today = timezone.now().date()
 
-        links = ShortLink.objects.filter(owner=user)
+        # Base queryset (reuse everywhere)
+        base_qs = ClickEvent.objects.filter(short_link__owner=user)
 
-        # 🔢 Basic stats
-        links_created = links.count()
-
-        total_clicks = links.aggregate(
-            total=Sum("unique_clicks")
-        )["total"] or 0
-
-        # 📅 Today clicks
-        today_clicks = ClickEvent.objects.filter(
-            short_link__owner=user,
-            created_at__date=today
-        ).count()
-
-        # 💰 Earnings (total)
-        earnings_data = ClickEvent.objects.filter(
-            short_link__owner=user,
-            is_completed=True
-        ).aggregate(
-            total=Sum("earned_amount")
+        # 🔢 Overall stats (SINGLE QUERY)
+        stats = base_qs.aggregate(
+            total_clicks=Count("id"),
+            unique_clicks=Count("id", filter=Q(is_unique=True)),
+            completed_clicks=Count("id", filter=Q(is_completed=True)),
+            total_earnings=Sum("earned_amount", filter=Q(is_completed=True)),
+            avg_cpm=Avg("cpm_snapshot", filter=Q(is_completed=True)),
         )
 
-        total_earnings = earnings_data["total"] or 0
+        # 📅 Today stats (SINGLE QUERY)
+        today_qs = base_qs.filter(created_at__date=today)
 
-        # 💰 Today earnings
-        today_earnings_data = ClickEvent.objects.filter(
-            short_link__owner=user,
-            is_completed=True,
-            created_at__date=today
-        ).aggregate(
-            total=Sum("earned_amount")
+        today_stats = today_qs.aggregate(
+            total_clicks=Count("id"),
+            unique_clicks=Count("id", filter=Q(is_unique=True)),
+            completed_clicks=Count("id", filter=Q(is_completed=True)),
+            earnings=Sum("earned_amount", filter=Q(is_completed=True)),
         )
 
-        today_earnings = today_earnings_data["total"] or 0
-
-        # 📊 Average CPM
-        avg_cpm = ClickEvent.objects.filter(
-            short_link__owner=user,
-            is_completed=True
-        ).aggregate(
-            avg=Avg("cpm_snapshot")
-        )["avg"] or 0
+        # 🔗 Links count
+        links_created = ShortLink.objects.filter(owner=user).count()
 
         # 👥 Referrals
-        referrals = user.referrals.all()
-        referral_count = referrals.count()
-
-        # 💰 (optional: if you track referral earnings)
+        referral_count = user.referrals.count()
         referral_earnings = getattr(user, "referral_earnings", 0)
 
-        # 💸 Balance
-        pending = user.pending_withdraw or 0
+        # 💰 Wallet
+        total_earnings = stats["total_earnings"] or Decimal("0")
+        pending = user.pending_withdraw or Decimal("0")
         available = total_earnings - pending
 
-        # 📈 Performance graph (last 7 days)
+        # 📈 Last 7 days performance
         last_7_days = []
+
         for i in range(6, -1, -1):
             day = today - timedelta(days=i)
 
-            day_queryset = ClickEvent.objects.filter(
-                short_link__owner=user,
-                created_at__date=day
+            day_qs = base_qs.filter(created_at__date=day)
+
+            day_data = day_qs.aggregate(
+                clicks=Count("id"),
+                unique_clicks=Count("id", filter=Q(is_unique=True)),
+                completed_clicks=Count("id", filter=Q(is_completed=True)),
+                earnings=Sum("earned_amount", filter=Q(is_completed=True)),
             )
-
-            # 💰 earnings
-            day_earnings = day_queryset.filter(
-                is_completed=True
-            ).aggregate(total=Sum("earned_amount"))["total"] or 0
-
-            # 👆 clicks (ALL clicks, not just completed)
-            day_clicks = day_queryset.count()
 
             last_7_days.append({
                 "date": str(day),
-                "earnings": float(day_earnings),
-                "clicks": day_clicks
+                "clicks": day_data["clicks"] or 0,
+                "unique_clicks": day_data["unique_clicks"] or 0,
+                "completed_clicks": day_data["completed_clicks"] or 0,
+                "earnings": float(day_data["earnings"] or 0),
             })
 
         return Response({
             "username": user.username,
 
-            # 🔥 top cards
-            "today_views": today_clicks,
-            "today_earnings": today_earnings,
-            "referral_earnings": referral_earnings,
-            "average_cpm": avg_cpm,
+            # 🔥 Top cards (today)
+            "today": {
+                "views": today_stats["total_clicks"] or 0,
+                "unique_views": today_stats["unique_clicks"] or 0,
+                "completed_views": today_stats["completed_clicks"] or 0,
+                "earnings": float(today_stats["earnings"] or 0),
+            },
 
-            # 📊 stats
-            "links_created": links_created,
-            "total_views": total_clicks,
-            "total_earnings": total_earnings,
+            # 📊 Overall stats
+            "overall": {
+                "links_created": links_created,
+                "total_views": stats["total_clicks"] or 0,
+                "total_unique_views": stats["unique_clicks"] or 0,
+                "total_completed_views": stats["completed_clicks"] or 0,
+                "total_earnings": float(total_earnings),
+                "average_cpm": float(stats["avg_cpm"] or 0),
+            },
 
-            # 💰 wallet
-            "available_balance": available,
-            "pending_withdraw": pending,
-            "total_withdrawn": user.total_withdrawn or 0,
+            # 💰 Wallet
+            "wallet": {
+                "available_balance": float(available),
+                "pending_withdraw": float(pending),
+                "total_withdrawn": float(user.total_withdrawn or 0),
+            },
 
-            # 👥 referrals
-            "referral_code": user.referral_code,
-            "total_referrals": referral_count,
+            # 👥 Referrals
+            "referrals": {
+                "code": user.referral_code,
+                "count": referral_count,
+                "earnings": float(referral_earnings),
+            },
 
-            # 📈 graph
-            "performance": last_7_days
+            # 📈 Graph
+            "performance": last_7_days,
         })
 class WithdrawView(APIView):
     permission_classes = [IsAuthenticated]

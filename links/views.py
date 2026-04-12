@@ -201,6 +201,7 @@ class AnnouncementListView(APIView):
                 "id": str(a.id),
                 "title": a.title,
                 "message": a.message,
+                "created_at":a.created_at,
             }
             for a in announcements
         ]

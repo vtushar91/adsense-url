@@ -9,6 +9,7 @@ class ClickEventAdmin(admin.ModelAdmin):
         "short_link",
         "ip_address",
         "is_unique",
+        "is_completed"
         "created_at",
     )
 

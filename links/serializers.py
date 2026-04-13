@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import ShortLink
-
+from django.conf import settings
 
 class CreateShortLinkSerializer(serializers.ModelSerializer):
     monetization_rule_id = serializers.UUIDField(required=False)
@@ -24,4 +24,4 @@ class ShortLinkSerializer(serializers.ModelSerializer):
 
     def get_short_url(self, obj):
         request = self.context.get("request")
-        return f"{request.scheme}://{request.get_host()}/{obj.short_code}"
+        return f"{settings.BASE_DOMAIN}/{obj.short_code}/"
